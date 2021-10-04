@@ -133,7 +133,7 @@ function App() {
       zoom={10}
       onLoad={onLoad}
       onUnmount={onUnmount}
-      options={{ streetViewControl: false }}
+      options={{ streetViewControl: false, mapTypeControl: false }}
     >
       {directions &&
 
