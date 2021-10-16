@@ -38,10 +38,7 @@ const containerStyle = {
   height: '100vh'
 };
 
-const center = {
-  lat: -33,
-  lng: 116
-};
+const center = { lat: -32, lng: 116 }
 
 const DIRECTION_REQUEST_DELAY = 300
 
@@ -56,6 +53,35 @@ const delay = (time: number) =>
 //Map Key
 //AIzaSyAwFPLZIa-3fk07Hq0sAjyaPvYOMTfzyBo
 
+function computeTotalDistance(myroute: any) {
+  let total = 0;
+
+  if (!myroute) {
+    return;
+  }
+
+  for (let i = 0; i < myroute.legs.length; i++) {
+    total += myroute.legs[i]!.distance!.value;
+  }
+
+  return total / 1000;
+}
+
+async function computeTotalElavation(ElavationService: any, myroute: any) {
+  if (!myroute) {
+    return;
+  }
+  const res = await ElavationService.getElevationAlongPath({
+    path: myroute.overview_path,
+    samples: 256,
+  })
+  console.log({ res })
+
+  
+
+  return res
+}
+
 function App() {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -64,12 +90,15 @@ function App() {
 
   const [map, setMap] = React.useState(null)
   const [directions, setDirections] = React.useState<any>({})
+  const [directions2, setDirections2] = React.useState<any>({})
 
   const onLoad = React.useCallback(async function callback(map) {
     const bounds = new window.google.maps.LatLngBounds();
     map.fitBounds(bounds);
     const DirectionsService = new window.google.maps.DirectionsService()
-    const directionsResult = await directionsRequest({
+    const ElavationService = new window.google.maps.ElevationService()
+    console.log(ElavationService.getElevationAlongPath)
+    const directionsResult1 = await directionsRequest({
       DirectionsService,
       origin: {
         lat: -32,
@@ -80,10 +109,26 @@ function App() {
         lon: 116,
       },
     })
-    console.log({ directionsResult })
 
+    const directionsResult2 = await directionsRequest({
+      DirectionsService,
+      origin: {
+        lat: -33,
+        lon: 116,
+      },
+      destination: {
+        lat: -32,
+        lon: 116,
+      },
+    })
 
-    setDirections(directionsResult)
+    //@ts-ignore
+    const r = await computeTotalElavation(ElavationService, directionsResult1?.routes[0])
+    console.log({ directionsResult1 })
+
+    setDirections(directionsResult1)
+    setDirections2(directionsResult2)
+
     setMap(map)
   }, [])
 
@@ -143,6 +188,15 @@ function App() {
             key={`route-${k}`}
             routeIndex={k}
             directions={directions}
+            options={DIRECTIONS_OPTIONS}
+          />)
+      }
+      {directions2 &&
+        directions2.routes && directions2.routes.map((_: unknown, k: number) =>
+          <DirectionsRenderer
+            key={`route-2-${k}`}
+            routeIndex={k}
+            directions={directions2}
             options={DIRECTIONS_OPTIONS}
           />)
       }
