@@ -21,6 +21,7 @@ const directionsRequest = ({ DirectionsService, origin, destination }: {
           destination.lon
         ),
         travelMode: window.google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true
       },
       (result: unknown, status: google.maps.DirectionsStatus) => {
         if (status === window.google.maps.DirectionsStatus.OK) {
@@ -38,7 +39,7 @@ const containerStyle = {
 };
 
 const center = {
-  lat: -32,
+  lat: -33,
   lng: 116
 };
 
@@ -68,7 +69,7 @@ function App() {
     const bounds = new window.google.maps.LatLngBounds();
     map.fitBounds(bounds);
     const DirectionsService = new window.google.maps.DirectionsService()
-    const direction = await directionsRequest({
+    const directionsResult = await directionsRequest({
       DirectionsService,
       origin: {
         lat: -32,
@@ -79,9 +80,10 @@ function App() {
         lon: 116,
       },
     })
+    console.log({ directionsResult })
 
-    console.log(direction)
-    setDirections(direction)
+
+    setDirections(directionsResult)
     setMap(map)
   }, [])
 
@@ -136,11 +138,13 @@ function App() {
       options={{ streetViewControl: false, mapTypeControl: false }}
     >
       {directions &&
-
-        <DirectionsRenderer
-          directions={directions}
-          options={DIRECTIONS_OPTIONS}
-        />
+        directions.routes && directions.routes.map((_: unknown, k: number) =>
+          <DirectionsRenderer
+            key={`route-${k}`}
+            routeIndex={k}
+            directions={directions}
+            options={DIRECTIONS_OPTIONS}
+          />)
       }
       { /* Child components, such as markers, info windows, etc. */}
       <></>
