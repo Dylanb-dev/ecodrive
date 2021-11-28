@@ -10,8 +10,8 @@ const DIRECTIONS_OPTIONS = { suppressMarkers: true, preserveViewport: true }
 
 const DIRECTIONS_OPTIONS_OJ = {
   suppressMarkers: true, preserveViewport: true, polylineOptions: {
-    strokeColor: ' #FFA500', strokeOpacity: 1.0,
-    strokeWeight: 5
+    strokeColor: ' #FFA500', strokeOpacity: 0.9,
+    strokeWeight: 3
   }
 }
 
@@ -82,11 +82,11 @@ async function findBestRoute(elavationService: any, myRoutes: any[]) {
       originalData: route,
       distanceWithElevation: computeTotalElavation(elavationService, route)
     }
-
-
   })
 
-  const best = myRoutes.sort((a: any, b: any) => a.distanceWithElevation - b.distanceWithElevation)[0]
+  console.log(myRoutes)
+
+  const best = myRoutes.sort((a: any, b: any) => (a.distanceWithElevation + a.legs[0].distance.value) - (b.distanceWithElevation + b.legs[0].distance.value))[0]
   return best
 }
 
@@ -119,10 +119,10 @@ function App() {
   const [map, setMap] = React.useState(null)
   const [directions, setDirections] = React.useState<any>({})
   const [OptResult, setOptResult] = React.useState<any>({})
-  const [googleResultTo, setGoogleResultTo] = React.useState<any>({})
-  const [googleResultFrom, setGoogleResultFrom] = React.useState<any>({})
+  const [googleResultTo, setGoogleResultTo] = React.useState<any[]>([])
+  const [googleResultFrom, setGoogleResultFrom] = React.useState<any[]>([])
   const [optResultTo, setOptResultTo] = React.useState<any[]>([])
-  const [optResultReturn, setOptResultReturn] = React.useState<any>({})
+  const [optResultFrom, setOptResultFrom] = React.useState<any[]>([])
 
   const onLoad = React.useCallback(async function callback(map) {
     const bounds = new window.google.maps.LatLngBounds();
@@ -164,15 +164,21 @@ function App() {
     //@ts-ignore
     const bestRouteTo = await findBestRoute(ElavationService, directionsResult1?.routes)
     //@ts-ignore
-    const bestRouteReturn = await findBestRoute(ElavationService, directionsResult2?.routes)
+    const bestRouteFrom = await findBestRoute(ElavationService, directionsResult2?.routes)
 
     setOptResult(directionsResult2)
 
-    console.log({ bestRouteTo, bestRouteReturn })
+    console.log({ bestRouteTo, bestRouteFrom })
 
-    setOptResultTo([bestRouteTo, bestRouteReturn])
-    setOptResultReturn(bestRouteReturn)
-    console.log({ optResultTo, optResultReturn })
+    setOptResultTo([bestRouteTo])
+    setOptResultFrom([bestRouteFrom])
+
+    //@ts-ignore
+    setGoogleResultTo([directionsResult1?.routes[0]])
+    //@ts-ignore
+    setGoogleResultFrom([directionsResult2?.routes[0]])
+
+    console.log({ optResultTo, optResultFrom })
 
     console.log({ directionsResult1 })
     setMap(map)
@@ -242,8 +248,30 @@ function App() {
       onUnmount={onUnmount}
       options={{ streetViewControl: false, mapTypeControl: false }}
     >
-
       {optResultTo && optResultTo.map((r: any, k: number) =>
+        <>
+          <DirectionsRenderer
+            key={`route-${k}`}
+            routeIndex={k}
+            directions={directions}
+            options={DIRECTIONS_OPTIONS}
+          />
+          <InfoWindow
+            key={`route-window-${k}`}
+
+            onLoad={onLoadLabel}
+            //@ts-ignore
+            position={r.overview_path[0]}
+          >
+            <div style={divStyle}>
+              <p>{'Distance to Destination'}</p>
+
+              <p>{r.legs[0].distance.text}</p>
+            </div>
+          </InfoWindow>
+        </>)
+      }
+      {optResultFrom && optResultFrom.map((r: any, k: number) =>
         <>
           <DirectionsRenderer
             key={`route-${k}`}
@@ -259,11 +287,58 @@ function App() {
             position={r.overview_path[0]}
           >
             <div style={divStyle}>
+              <p>{'Distance back Home'}</p>
               <p>{r.legs[0].distance.text}</p>
             </div>
           </InfoWindow>
         </>)
       }
+
+      {googleResultTo && googleResultTo.map((r: any, k: number) =>
+        <>
+          <DirectionsRenderer
+            key={`route-${k}`}
+            routeIndex={k}
+            directions={directions}
+            options={DIRECTIONS_OPTIONS_OJ}
+          />
+          <InfoWindow
+            key={`route-window-${k}`}
+
+            onLoad={onLoadLabel}
+            //@ts-ignore
+            position={r.overview_path[0]}
+          >
+            <div style={divStyle}>
+              <p>{'Distance back Home'}</p>
+              <p>{r.legs[0].distance.text}</p>
+            </div>
+          </InfoWindow>
+        </>)
+      }
+      {googleResultFrom && googleResultFrom.map((r: any, k: number) =>
+        <>
+          <DirectionsRenderer
+            key={`route-${k}`}
+            routeIndex={k}
+            directions={directions}
+            options={DIRECTIONS_OPTIONS_OJ}
+          />
+          <InfoWindow
+            key={`route-window-${k}`}
+
+            onLoad={onLoadLabel}
+            //@ts-ignore
+            position={r.overview_path[0]}
+          >
+            <div style={divStyle}>
+              <p>{'Distance back Home'}</p>
+              <p>{r.legs[0].distance.text}</p>
+            </div>
+          </InfoWindow>
+        </>)
+      }
+
       { /* Child components, such as markers, info windows, etc. */}
       <></>
     </GoogleMap>
