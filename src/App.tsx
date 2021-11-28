@@ -3,10 +3,17 @@ import './App.css';
 import {
   GoogleMap, useJsApiLoader,
   DirectionsRenderer,
+  InfoWindow,
 } from '@react-google-maps/api';
 
 const DIRECTIONS_OPTIONS = { suppressMarkers: true, preserveViewport: true }
 
+const DIRECTIONS_OPTIONS_OJ = {
+  suppressMarkers: true, preserveViewport: true, polylineOptions: {
+    strokeColor: ' #FFA500', strokeOpacity: 1.0,
+    strokeWeight: 5
+  }
+}
 
 
 const directionsRequest = ({ DirectionsService, origin, destination }: {
@@ -67,6 +74,23 @@ function computeTotalDistance(myroute: any) {
   return total / 1000;
 }
 
+
+//@ts-ignore
+async function findBestRoute(elavationService: any, myRoutes: any[]) {
+  myRoutes.map((route: any, i: number) => {
+    return {
+      originalData: route,
+      distanceWithElevation: computeTotalElavation(elavationService, route)
+    }
+
+
+  })
+
+  const best = myRoutes.sort((a: any, b: any) => a.distanceWithElevation - b.distanceWithElevation)[0]
+  return best
+}
+
+
 async function computeTotalElavation(ElavationService: any, myroute: any) {
   if (!myroute) {
     return;
@@ -75,11 +99,15 @@ async function computeTotalElavation(ElavationService: any, myroute: any) {
     path: myroute.overview_path,
     samples: 256,
   })
-  console.log({ res })
 
-  
+  let startingElevation = res.results[0].elevation
+  let elevationChange = 0
+  res.results.map((a: any, i: number) => {
+    elevationChange += Math.abs(startingElevation - a.elevation)
+    startingElevation = a.elevation
+  })
 
-  return res
+  return elevationChange
 }
 
 function App() {
@@ -90,7 +118,11 @@ function App() {
 
   const [map, setMap] = React.useState(null)
   const [directions, setDirections] = React.useState<any>({})
-  const [directions2, setDirections2] = React.useState<any>({})
+  const [OptResult, setOptResult] = React.useState<any>({})
+  const [googleResultTo, setGoogleResultTo] = React.useState<any>({})
+  const [googleResultFrom, setGoogleResultFrom] = React.useState<any>({})
+  const [optResultTo, setOptResultTo] = React.useState<any[]>([])
+  const [optResultReturn, setOptResultReturn] = React.useState<any>({})
 
   const onLoad = React.useCallback(async function callback(map) {
     const bounds = new window.google.maps.LatLngBounds();
@@ -124,11 +156,25 @@ function App() {
 
     //@ts-ignore
     const r = await computeTotalElavation(ElavationService, directionsResult1?.routes[0])
+    console.log({ r })
     console.log({ directionsResult1 })
 
     setDirections(directionsResult1)
-    setDirections2(directionsResult2)
 
+    //@ts-ignore
+    const bestRouteTo = await findBestRoute(ElavationService, directionsResult1?.routes)
+    //@ts-ignore
+    const bestRouteReturn = await findBestRoute(ElavationService, directionsResult2?.routes)
+
+    setOptResult(directionsResult2)
+
+    console.log({ bestRouteTo, bestRouteReturn })
+
+    setOptResultTo([bestRouteTo, bestRouteReturn])
+    setOptResultReturn(bestRouteReturn)
+    console.log({ optResultTo, optResultReturn })
+
+    console.log({ directionsResult1 })
     setMap(map)
   }, [])
 
@@ -169,9 +215,23 @@ function App() {
   //   origins,
   // ])
 
+  const position = { lat: 33.772, lng: -117.214 }
+
+  const divStyle = {
+    background: `white`,
+    padding: 4
+  }
+
+  const onLoadLabel = (infoWindow: any) => {
+    console.log('infoWindow: ', infoWindow)
+  }
+
+
   const onUnmount = React.useCallback(function callback(map) {
     setMap(null)
   }, [])
+
+  console.log({ optResultTo })
 
   return isLoaded ? (
     <GoogleMap
@@ -182,23 +242,27 @@ function App() {
       onUnmount={onUnmount}
       options={{ streetViewControl: false, mapTypeControl: false }}
     >
-      {directions &&
-        directions.routes && directions.routes.map((_: unknown, k: number) =>
+
+      {optResultTo && optResultTo.map((r: any, k: number) =>
+        <>
           <DirectionsRenderer
             key={`route-${k}`}
             routeIndex={k}
             directions={directions}
-            options={DIRECTIONS_OPTIONS}
-          />)
-      }
-      {directions2 &&
-        directions2.routes && directions2.routes.map((_: unknown, k: number) =>
-          <DirectionsRenderer
-            key={`route-2-${k}`}
-            routeIndex={k}
-            directions={directions2}
-            options={DIRECTIONS_OPTIONS}
-          />)
+            options={DIRECTIONS_OPTIONS_OJ}
+          />
+          <InfoWindow
+            key={`route-window-${k}`}
+
+            onLoad={onLoadLabel}
+            //@ts-ignore
+            position={r.overview_path[0]}
+          >
+            <div style={divStyle}>
+              <p>{r.legs[0].distance.text}</p>
+            </div>
+          </InfoWindow>
+        </>)
       }
       { /* Child components, such as markers, info windows, etc. */}
       <></>
