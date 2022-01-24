@@ -16,7 +16,7 @@ const DIRECTIONS_OPTIONS = { suppressMarkers: true, preserveViewport: true }
 
 const DIRECTIONS_OPTIONS_OJ = {
   suppressMarkers: true, preserveViewport: true, polylineOptions: {
-    strokeColor: ' #FFA500', strokeOpacity: 0.9,
+    strokeColor: '#FFA500', strokeOpacity: 0.9,
     strokeWeight: 3
   }
 }
@@ -87,7 +87,6 @@ async function findBestRoute(elavationService: any, myRoutes: any[]) {
     }
   })
 
-  console.log(myRoutes)
 
   const best = myRoutes.sort((a: any, b: any) => (a.distanceWithElevation + a.legs[0].distance.value) - (b.distanceWithElevation + b.legs[0].distance.value))[0]
   return best
@@ -100,7 +99,7 @@ async function computeTotalElavation(ElavationService: any, myroute: any) {
   }
   const res = await ElavationService.getElevationAlongPath({
     path: myroute.overview_path,
-    samples: 256,
+    samples: 64,
   })
 
   let startingElevation = res.results[0].elevation
@@ -150,30 +149,31 @@ function App() {
   useEffect(() => {
 
     async function getDirections() {
+
       const directionsResult1 = await directionsRequest({
         //@ts-ignore
         DirectionsService: DirectionsService.current,
         origin: {
-          lat: -32,
-          lon: 116,
+          lat: searchResultFrom.geometry.location.lat(),
+          lon: searchResultFrom.geometry.location.lng()
         },
         destination: {
-          lat: -33,
-          lon: 116,
-        },
+          lat: searchResultTo.geometry.location.lat(),
+          lon: searchResultTo.geometry.location.lng()
+        }
       })
 
       const directionsResult2 = await directionsRequest({
         //@ts-ignore
         DirectionsService: DirectionsService.current,
         origin: {
-          lat: -33,
-          lon: 116,
+          lat: searchResultTo.geometry.location.lat(),
+          lon: searchResultTo.geometry.location.lng()
         },
         destination: {
-          lat: -32,
-          lon: 116,
-        },
+          lat: searchResultFrom.geometry.location.lat(),
+          lon: searchResultFrom.geometry.location.lng()
+        }
       })
 
       //@ts-ignore
@@ -196,15 +196,17 @@ function App() {
       setOptResultFrom([bestRouteFrom])
 
       //@ts-ignore
-      setGoogleResultTo([directionsResult1?.routes[0]])
+      setGoogleResultTo(directionsResult1?.routes)
       //@ts-ignore
-      setGoogleResultFrom([directionsResult2?.routes[0]])
+      setGoogleResultFrom(directionsResult2?.routes)
 
       console.log({ optResultTo, optResultFrom })
 
       console.log({ directionsResult1 })
     }
     if (searchResultFrom && searchResultTo) {
+      console.log({ searchResultFrom, searchResultTo })
+      console.log(searchResultFrom.geometry.location)
       getDirections()
 
     }
@@ -231,7 +233,7 @@ function App() {
     setMap(null)
   }, [])
 
-  console.log({ optResultTo })
+  console.log({ optResultTo, googleResultTo, optResultFrom, googleResultFrom })
 
   return isLoaded ? (
     <GoogleMap
@@ -301,96 +303,50 @@ function App() {
           }}
         />
       </Autocomplete>}
-      {optResultTo && optResultTo.map((r: any, k: number) =>
+      {googleResultFrom && googleResultFrom.map((r: any, k: number) =>
         <>
           <DirectionsRenderer
-            key={`route-${k}`}
+            key={`googlef-route-${k}`}
             routeIndex={k}
             directions={directions}
             options={DIRECTIONS_OPTIONS}
           />
-          <InfoWindow
-            key={`route-window-${k}`}
-
-            onLoad={onLoadLabel}
-            //@ts-ignore
-            position={r.overview_path[0]}
-          >
-            <div style={divStyle}>
-              <p>{'Distance to Destination'}</p>
-
-              <p>{r.legs[0].distance.text}</p>
-            </div>
-          </InfoWindow>
         </>)
       }
-      {optResultFrom && optResultFrom.map((r: any, k: number) =>
+      {/* {optResultTo && optResultTo.map((r: any, k: number) =>
         <>
           <DirectionsRenderer
-            key={`route-${k}`}
+            key={`optResultTo-route-${k}`}
             routeIndex={k}
             directions={directions}
             options={DIRECTIONS_OPTIONS_OJ}
           />
-          <InfoWindow
-            key={`route-window-${k}`}
 
-            onLoad={onLoadLabel}
-            //@ts-ignore
-            position={r.overview_path[0]}
-          >
-            <div style={divStyle}>
-              <p>{'Distance back Home'}</p>
-              <p>{r.legs[0].distance.text}</p>
-            </div>
-          </InfoWindow>
         </>)
-      }
-
+      } */}
       {googleResultTo && googleResultTo.map((r: any, k: number) =>
+        <DirectionsRenderer
+          key={`googleResultTo-route-${k}`}
+          routeIndex={k}
+          directions={directions}
+          options={DIRECTIONS_OPTIONS}
+        />
+      )
+      }
+      {/* {optResultFrom && optResultFrom.map((r: any, k: number) =>
         <>
           <DirectionsRenderer
-            key={`route-${k}`}
+            key={`optResultFrom-route-${k}`}
             routeIndex={k}
             directions={directions}
             options={DIRECTIONS_OPTIONS_OJ}
           />
-          <InfoWindow
-            key={`route-window-${k}`}
 
-            onLoad={onLoadLabel}
-            //@ts-ignore
-            position={r.overview_path[0]}
-          >
-            <div style={divStyle}>
-              <p>{'Distance back Home'}</p>
-              <p>{r.legs[0].distance.text}</p>
-            </div>
-          </InfoWindow>
         </>)
-      }
-      {googleResultFrom && googleResultFrom.map((r: any, k: number) =>
-        <>
-          <DirectionsRenderer
-            key={`route-${k}`}
-            routeIndex={k}
-            directions={directions}
-            options={DIRECTIONS_OPTIONS_OJ}
-          />
-          <InfoWindow
-            key={`route-window-${k}`}
+      } */}
 
-            onLoad={onLoadLabel}
-            //@ts-ignore
-            position={r.overview_path[0]}
-          >
-            <div style={divStyle}>
-              <p>{'Distance back Home'}</p>
-              <p>{r.legs[0].distance.text}</p>
-            </div>
-          </InfoWindow>
-        </>)
-      }
+
+
 
       { /* Child components, such as markers, info windows, etc. */}
       <></>
