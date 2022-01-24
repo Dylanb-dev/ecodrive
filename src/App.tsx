@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import './App.css';
 import {
   GoogleMap, useJsApiLoader,
@@ -121,74 +121,94 @@ function App() {
   })
 
   const [map, setMap] = React.useState(null)
-  let search: any = null
 
+  const searchElFrom = useRef(null)
+  const searchElTo = useRef(null)
+  const DirectionsService = useRef(null)
+  const ElavationService = useRef(null)
   const [directions, setDirections] = React.useState<any>({})
   const [OptResult, setOptResult] = React.useState<any>({})
-  const [googleResultTo, setGoogleResultTo] = React.useState<any[]>([])
+
+  const [searchResultFrom, setSearchResultFrom] = React.useState<any>()
+  const [searchResultTo, setSearchResultTo] = React.useState<any>()
   const [googleResultFrom, setGoogleResultFrom] = React.useState<any[]>([])
+  const [googleResultTo, setGoogleResultTo] = React.useState<any[]>([])
   const [optResultTo, setOptResultTo] = React.useState<any[]>([])
   const [optResultFrom, setOptResultFrom] = React.useState<any[]>([])
 
   const onLoad = React.useCallback(async function callback(map) {
     const bounds = new window.google.maps.LatLngBounds();
     map.fitBounds(bounds);
-    const DirectionsService = new window.google.maps.DirectionsService()
-    const ElavationService = new window.google.maps.ElevationService()
-    console.log(ElavationService.getElevationAlongPath)
-    const directionsResult1 = await directionsRequest({
-      DirectionsService,
-      origin: {
-        lat: -32,
-        lon: 116,
-      },
-      destination: {
-        lat: -33,
-        lon: 116,
-      },
-    })
-
-    const directionsResult2 = await directionsRequest({
-      DirectionsService,
-      origin: {
-        lat: -33,
-        lon: 116,
-      },
-      destination: {
-        lat: -32,
-        lon: 116,
-      },
-    })
-
-    // //@ts-ignore
-    // const r = await computeTotalElavation(ElavationService, directionsResult1?.routes[0])
-    // console.log({ r })
-    // console.log({ directionsResult1 })
-
-    // setDirections(directionsResult1)
-
-    // //@ts-ignore
-    // const bestRouteTo = await findBestRoute(ElavationService, directionsResult1?.routes)
-    // //@ts-ignore
-    // const bestRouteFrom = await findBestRoute(ElavationService, directionsResult2?.routes)
-
-    // setOptResult(directionsResult2)
-
-    // console.log({ bestRouteTo, bestRouteFrom })
-
-    // setOptResultTo([bestRouteTo])
-    // setOptResultFrom([bestRouteFrom])
-
-    // //@ts-ignore
-    // setGoogleResultTo([directionsResult1?.routes[0]])
-    // //@ts-ignore
-    // setGoogleResultFrom([directionsResult2?.routes[0]])
-
-    // console.log({ optResultTo, optResultFrom })
-
-    // console.log({ directionsResult1 })
+    //@ts-ignore
+    DirectionsService.current = new window.google.maps.DirectionsService()
+    //@ts-ignore
+    ElavationService.current = new window.google.maps.ElevationService()
     setMap(map)
   }, [])
+
+
+  useEffect(() => {
+
+    async function getDirections() {
+      const directionsResult1 = await directionsRequest({
+        //@ts-ignore
+        DirectionsService: DirectionsService.current,
+        origin: {
+          lat: -32,
+          lon: 116,
+        },
+        destination: {
+          lat: -33,
+          lon: 116,
+        },
+      })
+
+      const directionsResult2 = await directionsRequest({
+        //@ts-ignore
+        DirectionsService: DirectionsService.current,
+        origin: {
+          lat: -33,
+          lon: 116,
+        },
+        destination: {
+          lat: -32,
+          lon: 116,
+        },
+      })
+
+      //@ts-ignore
+      const r = await computeTotalElavation(ElavationService.current, directionsResult1?.routes[0])
+      console.log({ r })
+      console.log({ directionsResult1 })
+
+      setDirections(directionsResult1)
+
+      //@ts-ignore
+      const bestRouteTo = await findBestRoute(ElavationService.current, directionsResult1?.routes)
+      //@ts-ignore
+      const bestRouteFrom = await findBestRoute(ElavationService.current, directionsResult2?.routes)
+
+      setOptResult(directionsResult2)
+
+      console.log({ bestRouteTo, bestRouteFrom })
+
+      setOptResultTo([bestRouteTo])
+      setOptResultFrom([bestRouteFrom])
+
+      //@ts-ignore
+      setGoogleResultTo([directionsResult1?.routes[0]])
+      //@ts-ignore
+      setGoogleResultFrom([directionsResult2?.routes[0]])
+
+      console.log({ optResultTo, optResultFrom })
+
+      console.log({ directionsResult1 })
+    }
+    if (searchResultFrom && searchResultTo) {
+      getDirections()
+
+    }
+  }, [searchResultFrom, searchResultTo])
 
   const divStyle = {
     background: `white`,
@@ -199,12 +219,14 @@ function App() {
     console.log('infoWindow: ', infoWindow)
   }
 
-  const onLoadSearch = (searchP: any) => {
-    console.log(searchP)
-    search = searchP
-    console.log(searchP)
-
+  const onLoadSearchFrom = (searchP: any) => {
+    searchElFrom.current = searchP
   }
+
+  const onLoadSearchTo = (searchP: any) => {
+    searchElTo.current = searchP
+  }
+
   const onUnmount = React.useCallback(function callback(map) {
     setMap(null)
   }, [])
@@ -221,10 +243,12 @@ function App() {
       options={{ streetViewControl: false, mapTypeControl: false }}
     >
       <Autocomplete
-        onLoad={onLoadSearch}
+        onLoad={onLoadSearchFrom}
         onPlaceChanged={() => {
           //@ts-ignore
-          console.log({ search })
+          console.log(searchElFrom.current.getPlace())
+          //@ts-ignore
+          setSearchResultFrom(searchElFrom.current.getPlace())
         }}
       >
         <input
@@ -247,6 +271,36 @@ function App() {
           }}
         />
       </Autocomplete>
+      {searchResultFrom && <Autocomplete
+        onLoad={onLoadSearchTo}
+        onPlaceChanged={() => {
+          //@ts-ignore
+          console.log(searchElTo.current.getPlace())
+          //@ts-ignore
+          setSearchResultTo(searchElTo.current.getPlace())
+        }}
+      >
+        <input
+          type="text"
+          placeholder="Customized your placeholder"
+          style={{
+            boxSizing: `border-box`,
+            border: `1px solid transparent`,
+            width: `240px`,
+            height: `32px`,
+            padding: `0 12px`,
+            borderRadius: `3px`,
+            boxShadow: `0 2px 6px rgba(0, 0, 0, 0.3)`,
+            fontSize: `14px`,
+            outline: `none`,
+            textOverflow: `ellipses`,
+            position: "absolute",
+            left: "50%",
+            top: '54px',
+            marginLeft: "-120px"
+          }}
+        />
+      </Autocomplete>}
       {optResultTo && optResultTo.map((r: any, k: number) =>
         <>
           <DirectionsRenderer
